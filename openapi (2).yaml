@@ -1,0 +1,1015 @@
+openapi: 3.0.0
+info:
+  title: OpenAPI спецификация Redmine.
+  description: Предоставляет некоторые из своих данных,через REST API. Этот API предоставляет доступ и основные операции CRUD (создание, обновление, удаление) для ресурсов, описанных ниже. API поддерживает оба типа XML и JSON форма
+  version: 1.0.0
+servers:
+  - url: https://Redmine/api/v1
+    description: Redmine server
+paths:
+  /issues:
+    get:
+      summary: Получить весь список задач
+      description: Получить весь список задач из Redmine
+      operationId: getIssues
+      tags:
+        - Issues
+      parameters:
+        - name: offset
+          description: Пропустить количество задач в ответе (необязательно)
+          example: offset=0
+          in: query
+          schema:
+            type: string
+        - name: limit
+          description: Количество задач на странице (необязательно)
+          example: limit=100
+          in: query
+          schema:
+            type: integer
+        - name: sort
+          description: Столбец для сортировки. Добавьте :desc , чтобы изменить порядок.
+          example: sort=category:desc,updated_on
+          in: query
+          schema:
+            type: string
+        - name: include
+          description: >-
+            Извлечение связанных данных (необязательно, используйте запятую для
+            извлечения нескольких ассоциаций). Возможные значения - attachments
+            - Начиная с версии 3.4.0 relations
+          example: include=attachments,relations
+          in: query
+          schema:
+            type: string
+        - name: issue_id
+          description: >-
+            Получить проблему с заданным идентификатором или несколькими
+            проблемами по идентификатору, используя ',' для разделения
+            идентификатора.
+          example: issue_id=1
+          in: query
+          schema:
+            type: integer
+        - name: project_id
+          description: >-
+            Получение проблем из проекта с заданным идентификатором (числовое
+            значение, а не идентификатор проекта).
+          example: project_id=1
+          in: query
+          schema:
+            type: integer
+        - name: subproject_id
+          description: >-
+            Получение проблем из подпроекта с заданным идентификатором. Вы
+            можете использовать project_id=XXX&subproject_id=!* для получения
+            только проблем данного проекта и ни одного из его подпроектов.
+          example: subproject_id=2
+          in: query
+          schema:
+            type: integer
+        - name: tracker_id
+          description: Получать проблемы от трекера с заданным идентификатором
+          example: tracker_id=1
+          in: query
+          schema:
+            type: integer
+        - name: status_id
+          description: >-
+            Получать проблемы только с заданным идентификатором статуса.
+            Возможные значения - open, closed, * для получения открытых и
+            закрытых проблем используется идентификатор статуса.
+          example: status_id=closed
+          in: query
+          schema:
+            type: string
+        - name: assigned_to_id
+          description: >-
+            Получение проблем, которые назначены данному идентификатору
+            пользователя. me вместо этого может использоваться идентификатор для
+            получения всех проблем от вошедшего в систему пользователя (через
+            ключ API или HTTP auth).
+          example: assigned_to_id=me
+          in: query
+          schema:
+            type: string
+        - name: parent_id
+          description: >-
+            Получение проблем, родительской проблеме которых присвоен
+            идентификатор.
+          example: parent_id=3
+          in: query
+          schema:
+            type: integer
+        - name: cf_x
+          description: >-
+            возникают проблемы с заданным значением для пользовательского поля с
+            идентификатором x. (В пользовательском поле должно быть установлено
+            значение - используется в качестве фильтра.)
+          example: cf_1=abcdef
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список задач соотвествующие параметру запроса
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/issue'
+            application/xml; charset=UTF-8:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/issue'
+    post:
+      summary: Метод добавления новой задачи
+      description: Метод предназначен для сохранения в БД данных по новой задаче.
+        Хэш атрибутов проблемы -
+        - project_id;
+        - tracker_id;
+        - status_id
+        - priority_id
+        - subject
+        - description
+        - category_id
+        - fixed_version_id - ИДЕНТИФИКАТОР целевых версий (ранее назывался "Фиксированная версия" и все еще упоминается как таковой в API)
+        - assigned_to_id - ИДЕНТИФИКАТОР пользователя, которому нужно назначить проблему (в настоящее время нет механизма для назначения по имени)
+        - parent_issue_id - Идентификатор родительской проблемы
+        - custom_fields - Смотрите Пользовательские поля
+        - watcher_user_ids - Массив идентификаторов пользователей для добавления в качестве наблюдателей (начиная с 2.3.0)
+        - is_private - Используйте true или false, чтобы указать, является ли проблема частной или нет
+        - estimated_hours - Предполагаемое количество часов для проблемы
+      operationId: createIssues
+      tags:
+        - Issues
+      
+      requestBody:
+          required: true
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/issue'
+      responses:
+        '200':
+          description: Подтверждение успешного сохранения
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/issue'
+  
+  /issues/{id}:
+    get:
+      summary: Метод получения задачи по идентификатору
+      description: Метод предназначен для получения из БД данных по игрушке.
+      operationId: getIssuesById
+      tags:
+        - Issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор задачи
+          example: 660508
+          schema:
+            type: string
+        - name: include
+          description: Извлечение связанных данных (необязательно, используйте запятую для извлечения нескольких ассоциаций). Возможные значения - children, attachments, relations, changesets, journals - Смотрите Журналы выпусков для получения дополнительной информации, watchers - Начиная с версии 2.3.0, allowed_statuses - Начиная с версии 5.0.x, возвращает доступные разрешенные статусы (те же значения, что указаны в форме редактирования проблемы) на основе - текущее отслеживание проблемы, текущий статус проблемы и роль участника (определенный рабочий процесс); наличие какой-либо открытой подзадачи (ов); наличие какой-либо открытой проблемы (ов) с блокировкой; существование закрытой родительской проблемы.
+          example: include=children, attachments
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Подтверждение успешного обновления
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/issue'
+    put:
+      summary: Метод обновления задачи
+      description: Метод предназначен для обновления в БД данных по имеющейся задаче.
+      operationId: updateIssues
+      tags:
+        - Issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор задачи
+          example: 660508
+          schema:
+            type: string
+      requestBody:
+          required: true
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/issue'
+      responses:
+        '200':
+          description: Задача
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/issue'
+    delete:
+      summary: Метод удаления задачи по идентификатору
+      description: Метод предназначен для удаления в БД данных по задаче.
+      operationId: deleteIssuesById
+      tags:
+        - Issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор задачи
+          example: 660508
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Успешное удаление задачи
+          content: {}
+          
+  /issues/{id}/watchers/{user_id}:
+    post:
+      summary: Метод добавления наблюдателей в задачу
+      description: Метод предназначен для сохранения в БД 
+      operationId: createIssuesWatchers
+      tags:
+        - Issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор задачи
+          example: 660508
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          description: Идентификатор пользователя для добавления в качестве наблюдателя
+          example: 1604
+          schema:
+            type: string 
+      responses:
+        '200':
+          description: Успешное добавление наблюдателя
+          content: {}
+    delete:
+      summary: Метод удаления наблюдателя из задачи
+      description: Метод предназначен для удаления в БД данных о наблюдателе
+      operationId: deleteWatchers
+      tags:
+        - Issues
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор задачи
+          example: 660508
+          schema:
+            type: integer
+        - name: user_id
+          in: path
+          required: true
+          description: Идентификатор пользователя для добавления в качестве наблюдателя
+          example: 1604
+          schema:
+            type:  integer
+      responses:
+        '200':
+          description: Успешное добавление наблюдателя
+          content: {}
+          
+  /projects:
+    get:
+      summary: Получить весь список проектов
+      description: Получить весь список проектов из Redmine
+      operationId: getProjects
+      tags:
+        - Projects
+      parameters:
+        - name: include
+          description: выборка связанных данных (необязательно). Значения должны разделяться запятой ",". Возможные значения - "trackers", "issue_categories", "enabled_modules", "time_entry_activities", "issue_custom_fields". 
+          example: include=trackers
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список проектов соотвествующие параметру запроса
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/project'
+    post:
+      summary: Получить весь список проектов
+      description: Получить весь список проектов из Redmine
+      operationId: createProjects
+      tags:
+        - Projects
+      requestBody:
+         required: true
+         content:
+           application/json; charset=UTF-8:
+             schema:
+               $ref: '#/components/schemas/create_project'
+      responses:
+        '201':
+          description: Проект был создан
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                  $ref: '#/components/schemas/create_project'
+        '422':
+          description: Проект не был создан из-за сбоев проверки (тело ответа содержит сообщения об ошибках)
+          content:
+              application/json;charset=UTF-8:
+                schema:
+                  items:
+                    type: string
+                    example: Unprocessable Entity
+                  
+  /projects/{id}:
+    get:
+      summary: Метод получения проекта по уникальному индентификатору
+      description: Метод предназначен для получения из БД данных по проекту.
+      operationId: getProjectsById
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 660508
+          schema:
+            type: integer
+        - name: include
+          description: выборка связанных данных (необязательно). Значения должны разделяться запятой ",". Возможные значения - "trackers", "issue_categories", "enabled_modules", "time_entry_activities", "issue_custom_fields". 
+          example: include=issue_categories
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список проектов соотвествующие параметру запроса
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                $ref: '#/components/schemas/project_id'
+    put:
+      summary: Метод обновления проекта
+      description: Метод предназначен для обновления в БД данных по id имеющегося проекта.
+      operationId: updateProjects
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      requestBody:
+          required: true
+          content: {}
+      responses:
+        '200':
+          description: Успешное обновление проекта
+          content: {}
+    delete:
+      summary: Метод удаления проекта по идентификатору
+      description: Метод предназначен для удаления в БД данных по проекта.
+      operationId: deleteProjectsById
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешное удаление проекта
+          content: {}
+         
+  /projects/{id}/archive:
+    put:
+      summary: Метод для архивирования проекта
+      description: Метод архивирует проект с заданным идентификатором.
+      operationId: updateProjectsArchive
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Проект успешно архивирован
+          content: {}
+  /projects/{id}/unarchive:
+    put:
+      summary: Метод для разархивирования проекта
+      description: Метод возвращает проекту заданный идентификатор
+      operationId: updateProjectsUnarchive
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Проект успешно разархивирован
+          content: {}
+          
+  /projects/{project_id}/memberships:
+    get:
+      summary: Метод получения участников проекта.
+      description: Возвращает разбитый на страницы список участников проекта. :project_id может быть либо числовым идентификатором проекта, либо идентификатором проекта.
+      operationId: getMemberships
+      tags:
+        - Project Memberships
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешно получен список участников проекта
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/memberships'
+    post:
+      summary: Метод для добавления участника проекта в наблюдатели.
+      description: Метод предназначен для добавления в БД данные о наблюдателе задачи.
+      operationId: createMemberships
+      tags:
+        - Project Memberships
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: Идентификатор проекта
+          example: 996
+          schema:
+            type: integer
+      requestBody:
+        description: "memberships - Хэш атрибутов членства, включая: <br> 1) user_id (обязательно) - числовой идентификатор пользователя или группы; <br> 2) role_ids (обязательно) массив числовых идентификаторов ролей"
+        required: true
+        content:
+          application/json; charset=UTF-8:
+            schema:
+              type: object
+              properties:
+                memberships:
+                  $ref: '#/components/schemas/membershipsCreate'
+      responses:
+        '201':
+          description: Успешно добавлен пользователь в наблюдатели.
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    $ref: '#/components/schemas/memberships'
+        '422':
+          description: "Unprocessable Entity: членство не было создано из-за сбоев проверки (тело ответа содержит сообщения об ошибках)"
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                $ref: '#/components/schemas/membershipsValidstionErrors'
+              
+  /memberships/{id}:
+    get:
+      summary: Метод возвращает информацию об участнике.
+      description: Метод предназначен для обновления данных в БД по идентфикатору участника проекта.
+      operationId: getMembershipsById
+      tags:
+        - Project Memberships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор участника проекта
+          example: 20662
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешно получен список участников проекта
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/memberships'
+    put:
+      summary: Метод обновляет информацию об участнике.
+      description: Метод предназначен для получения из БД данных по участнику проекта.
+      operationId: updatedMembershipsById
+      tags:
+        - Project Memberships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор участника проекта
+          example: 20662
+          schema:
+            type: integer
+      requestBody:
+        description: "memberships - Хэш атрибутов членства, включая: <br>  role_ids (обязательно) массив числовых идентификаторов ролей"
+        required: true
+        content:
+          application/json; charset=UTF-8:
+            schema:
+              type: object
+              properties:
+                memberships:
+                  $ref: '#/components/schemas/membershipsCreate'
+      responses:
+        '204':
+          description: No content
+          content: {}
+          links: {}
+        '422':
+          description: "Unprocessable Entity: членство не было создано из-за сбоев проверки (тело ответа содержит сообщения об ошибках)"
+          content:
+            application/json; charset=UTF-8:
+              schema:
+                $ref: '#/components/schemas/membershipsValidstionErrors'
+          links: {}
+    delete:
+      summary: Метод удаляет пользователя из проекта.
+      description: Метод предназначен для удаления из БД участника проекта
+      operationId: deleteMembershipsById
+      tags:
+        - Project Memberships
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор участника проекта
+          example: 20662
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: OK
+          content: {}
+          links: {}
+        '422':
+          description: Unprocessable Entity
+          content: {}
+          links: {}
+            
+components:
+  schemas:
+    issue:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор задачи
+          example: 4346
+        project:
+          type: object
+          description: Наименование проекта и его id
+          properties:
+            id:
+              description: id проекта
+              type: integer
+              example: 996
+            name:
+              description: название проекта
+              type: string
+              example: Горячая линия
+        tracker:
+          type: object
+          description: Наименование трекера и его id
+          properties:
+            id:
+              description: id трекера
+              type: integer
+              example: 111
+            name:
+              description: название трекера
+              type: string
+              example: Обращение
+        status:
+          type: object
+          description: Наименование статуса и его id
+          properties:
+            id:
+              description: id статуса
+              type: integer
+              example: 28
+            name:
+              description: название статуса
+              type: string
+              example: В работе
+        priority:
+          type: object
+          description: Наименование приоритета и его id
+          properties:
+            id:
+              description: id приоритета
+              type: integer
+              example: 1
+            name:
+              description: название приоритета
+              type: string
+              example: Нормальный
+        author:
+          type: object
+          description: Автор и его id
+          properties:
+            id:
+              description: id пользователя
+              type: integer
+              example: 250
+            name:
+              description: ФИО пользователя
+              type: string
+              example: Иванов Иван Иванович
+        subject:
+          type: string
+          description: Тема задачи
+          example: Тема задачи
+        description:
+          type: string
+          description: Описание задачи
+          example: Описание задачи
+        start_date:
+          type: string
+          description: Дата начала задачи
+          example: 2023-07-06T00:00:00.000Z
+        due_date:
+          type: string
+          description: Срок завершения задачи
+          example: 2023-07-10T00:00:00.000Z
+        done_ratio:
+          type: integer
+          description: Под вопросом
+          example: 100
+        is_private:
+          type: boolean
+          description: Под вопросом
+          example: false
+        estimated_hours:
+          type: integer
+          description: Под вопросом
+          example: null
+        custom_fields:
+          type: array
+          description: Наименование проекта и его id
+          items:
+            type: object
+            properties:
+              id:
+                description: id проекта
+                type: integer
+                example: 23
+              name:
+                description: название проекта
+                type: string
+              value:
+                type: string
+          example:
+            - id: 23
+              name: Название поля
+              value: Значение поля
+            - id: 24
+              name: Название поля
+              value: Значение поля
+            - ...
+        created_on:
+          type: string
+          description: Дата создания задачи
+          example: 2023-02-17T07:33:38.000Z
+        updated_on:
+          type: string
+          description: Дата обновления задачи
+          example: 2023-07-10T14:52:33.000Z
+        closed_on:
+          type: string
+          description: Дата закрытия задачи
+          example: null
+    project:
+      type: object
+      required:
+        - id
+        - name
+        - identifier
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор проекта
+          example: 3365
+        name:
+          type: string
+          description: Тема проекта
+          example: Теплоснабжение г.о. Серпуховский (№ 385)
+        identifier:
+          type: string
+          description: Уникальный идентификатор проекта
+          example: teplosnabjenie_i_v_g_o_serpuhovskii_moskovskoi_oblasti
+        description:
+          type: string
+          description: Описание проекта
+          example: ""
+        parent:
+          type: object
+          description: Родительский проект
+          properties:
+            id:
+              description: id проекта
+              type: integer
+              example: 3348
+            name:
+              description: Наименование родительского проекта
+              type: string
+              example: ЖКХ
+        status:
+          type: integer
+          description: Идентификатор статуса
+          example: 1
+        is_public:
+          type: boolean
+          description: Публичность проекта. При значении true проект видят все пользователи.
+          example: false
+        custom_fields:
+          type: array
+          description: Настроенные поля для проекта
+          items:
+            type: object
+            properties:
+              id:
+                description: id поля
+                type: integer
+              name:
+                description: название проекта
+                type: string
+              value:
+                type: string
+          example:
+            - id: 1048
+              name: Частный партнёр
+              value: null
+            - id: 70
+              name: Менеджер проекта
+              value: null
+            - ...
+        created_on:
+          type: string
+          description: Дата создания проекта
+          example: 2022-12-06T09:17:47Z
+        updated_on:
+          type: string
+          description: Дата обновления проекта
+          example: 2023-02-20T10:54:58Z
+    project_id:
+      type: object
+      required:
+        - id
+        - name
+        - identifier
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор проекта
+          example: 3365
+        name:
+          type: string
+          description: Тема проекта
+          example: Теплоснабжение г.о. Серпуховский (№ 385)
+        identifier:
+          type: string
+          description: Уникальный идентификатор проекта
+          example: teplosnabjenie_i_v_g_o_serpuhovskii_moskovskoi_oblasti
+        description:
+          type: string
+          description: Описание проекта
+          example: ""
+        homepage:
+          type: string
+          description: Под вопросом
+          example: ""
+        parent:
+          type: object
+          description: Родительский проект
+          properties:
+            id:
+              description: id проекта
+              type: integer
+              example: 3348
+            name:
+              description: Наименование родительского проекта
+              type: string
+              example: ЖКХ
+        status:
+          type: integer
+          description: Идентификатор статуса
+          example: 1
+        is_public:
+          type: boolean
+          description: Публичность проекта. При значении true проект видят все пользователи.
+          example: false
+        has_children:
+          type: integer
+          description: Под вопросом
+          example: 1
+        is_overdued:
+          type: integer
+          description: Под вопросом
+          example: 0
+        custom_fields:
+          type: array
+          description: Настроенные поля для проекта
+          items:
+            type: object
+            properties:
+              id:
+                description: id поля
+                type: integer
+              name:
+                description: название проекта
+                type: string
+              value:
+                type: string
+          example:
+            - id: 1048
+              name: Частный партнёр
+              value: null
+            - id: 70
+              name: Менеджер проекта
+              value: null
+            - ...
+        created_on:
+          type: string
+          description: Дата создания проекта
+          example: 2022-12-06T09:17:47Z
+        updated_on:
+          type: string
+          description: Дата обновления проекта
+          example: 2023-02-20T10:54:58Z
+    create_project:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Наименование проекта
+          example: ЖКХ
+        identifier:
+          type: string
+          description: Уникальный идентификатор проекта
+          example: jkh_1
+        description:
+          type: string
+          description: Описание проекта
+          example: ""
+        is_public:
+          type: boolean
+          description: Публичность проекта. При значении true проект видят все пользователи.
+          example: false
+        parent_id:
+          type: integer
+          description: Идентификатор родительского проекта
+          example: 1
+        inherit_members:
+          type: boolean
+          description: Под вопросом
+          example: false
+        tracker_id:
+          type: array
+          description: Массив идентификаторов трекеров
+          items:
+            type: object
+          example:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+        enabled_module_names:
+          type: array
+          description: Массив трекеров задач
+          items:
+            type: object
+          example: 
+            - issue_tracking
+        custom_field_values:
+          type: object
+          description: Объект настроенного поля
+          properties:
+            "1":
+              description: Значение поля
+              type: string
+              example: VALUE
+    memberships:
+      type: object
+      required:
+        - id
+        - project
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор членства
+          example: 20662
+        project:
+          type: object
+          description: Объект проекта
+          properties:
+            id:
+              description: Идентификатор проекта
+              type: integer
+              example: 1195
+            name:
+              description: Наименование проекта
+              type: string
+              example: "RM: Mii (МИПН)"
+        user:
+          type: object
+          description: Объект пользователя
+          properties:
+            id:
+              description: Идентификатор пользователя
+              type: integer
+              example: 378
+            name:
+              description: ФИО пользователя
+              type: string
+              example: "Иванов Иван Иванович"
+        roles:
+          type: array
+          description: Массив ролей проекта
+          items:
+            type: object
+            properties:
+              id:
+                description: Идентификатор роли
+                type: integer
+              name:
+                description: Наименование роли
+                type: string
+          example:
+            - id: 66
+              name: Обозреватель
+    membershipsCreate:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: Уникальный идентификатор пользователя.
+          example: 378
+        role_ids:
+          type: array
+          description: Уникальный идентификатор роли пользователя.
+          items:
+            type: object
+          example: 
+            - 66
+    membershipsValidstionErrors:
+      properties:
+        errors:
+          type: array
+          description: Массив идентификаторов трекеров
+          example:
+          - Имя не может быть пустым
+          - Роль не может быть пустым
